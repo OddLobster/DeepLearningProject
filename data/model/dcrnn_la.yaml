@@ -1,0 +1,41 @@
+---
+base_dir: data/model
+log_level: INFO
+data:
+  batch_size: 64                # Size of each batch, then the number of batches is #samples / batch_size
+  dataset_dir: data/METR-LA
+  test_batch_size: 64
+  val_batch_size: 64
+  graph_pkl_filename: data/sensor_graph/adj_mx.pkl
+
+model:
+  cl_decay_steps: 2000
+  filter_type: dual_random_walk
+  input_dim: 2
+  l1_decay: 0
+  max_diffusion_step: 2
+  num_rnn_layers: 2
+  output_dim: 1
+  rnn_units: 64
+  use_curriculum_learning: true
+  horizon: 1                      # Time horizon for prediction (in amount of 5 minute intervals, ex: 12 = 1 hour).
+  seq_len: 1                      # Time horizon for prediction (in amount of 5 minute intervals, ex: 12 = 1 hour).
+  num_nodes: 20                   # Number of sensors to be used.
+  dataset_used_length: 2016       # Length of time from the dataset that is used (in amount of 5 minute intervals, up to 34271, ex: 2016 = 1 week).
+  
+
+train:
+  base_lr: 0.01                   #Learning rate that the optimizer recieves (adam in this case)
+  dropout: 0
+  epoch: 0
+  epochs: 100                     #Number of epochs to perform
+  epsilon: 1.0e-3                 #eps: term added to the denominator to improve numerical stability
+  global_step: 0
+  lr_decay_ratio: 0.1             #LR of each parameter group decays by `lr_decay_ratio` once the epoch num. reaches one of the milestones (`steps`)
+  max_grad_norm: 5                #Performs gradient clipping. It is used to mitigate the problem of exploding gradients, which is of particular concern for recurrent networks (which LSTMs are a type of).
+  max_to_keep: 100
+  min_learning_rate: 2.0e-06
+  optimizer: adam                 #Optimizer to use
+  patience: 50                    #This is the number of times that `val_loss` exceeds `min_val_loss` before early-stopping 
+  steps: [20, 30, 40, 50]         #LR of each parameter group decays by `lr_decay_ratio` once the epoch num. reaches one of the milestones (`steps`)
+  test_every_n_epochs: 10         #Every N epochs, self.evaluate is run against the test dataset
