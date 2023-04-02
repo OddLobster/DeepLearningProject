@@ -20,7 +20,7 @@ model:
   use_curriculum_learning: true
   horizon: 1                      # Time horizon for prediction (in amount of 5 minute intervals, ex: 12 = 1 hour).
   seq_len: 1                      # Time horizon for prediction (in amount of 5 minute intervals, ex: 12 = 1 hour).
-  num_nodes: 20                   # Number of sensors to be used.
+  num_nodes: 20                   # Number of sensors to be used (up to 207).
   dataset_used_length: 2016       # Length of time from the dataset that is used (in amount of 5 minute intervals, up to 34271, ex: 2016 = 1 week).
   
 
