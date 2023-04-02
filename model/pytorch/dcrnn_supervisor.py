@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from lib import utils
 from model.pytorch.dcrnn_model import DCRNNModel
-from model.pytorch.loss import masked_mae_loss
+from model.pytorch.loss import masked_mae_loss, masked_rmse_loss, masked_mape_loss
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -120,6 +120,8 @@ class DCRNNSupervisor:
 
             val_iterator = self._data['{}_loader'.format(dataset)].get_iterator()
             losses = []
+            rmses = []
+            mapes = []
 
             y_truths = []
             y_preds = []
@@ -131,10 +133,18 @@ class DCRNNSupervisor:
                 loss = self._compute_loss(y, output)
                 losses.append(loss.item())
 
+                rmse = self._compute_rmse_loss(y, output)
+                rmses.append(rmse.item())
+                
+                mape = self._compute_mape_loss(y, output)
+                mapes.append(mape.item())
+
                 y_truths.append(y.cpu())
                 y_preds.append(output.cpu())
 
             mean_loss = np.mean(losses)
+            mean_rmse = np.mean(rmses)
+            mean_mape = np.mean(mapes)
 
             self._writer.add_scalar('{} loss'.format(dataset), mean_loss, batches_seen)
 
@@ -149,7 +159,7 @@ class DCRNNSupervisor:
                 y_truths_scaled.append(y_truth)
                 y_preds_scaled.append(y_pred)
 
-            return mean_loss, {'prediction': y_preds_scaled, 'truth': y_truths_scaled}
+            return mean_loss, mean_rmse, mean_mape, {'prediction': y_preds_scaled, 'truth': y_truths_scaled}
 
     def _train(self, base_lr,
                steps, patience=50, epochs=100, lr_decay_ratio=0.1, log_every=1, save_model=1,
@@ -207,7 +217,7 @@ class DCRNNSupervisor:
             lr_scheduler.step()
             self._logger.info("evaluating now!")
 
-            val_loss, _ = self.evaluate(dataset='val', batches_seen=batches_seen)
+            val_loss, val_rmse, val_mape, _ = self.evaluate(dataset='val', batches_seen=batches_seen)
 
             end_time = time.time()
 
@@ -223,7 +233,7 @@ class DCRNNSupervisor:
                 self._logger.info(message)
 
             if (epoch_num % test_every_n_epochs) == test_every_n_epochs - 1:
-                test_loss, _ = self.evaluate(dataset='test', batches_seen=batches_seen)
+                test_loss, test_rmse, test_mape, _ = self.evaluate(dataset='test', batches_seen=batches_seen)
                 message = 'Epoch [{}/{}] ({}) train_mae: {:.4f}, test_mae: {:.4f},  lr: {:.6f}, ' \
                           '{:.1f}s'.format(epoch_num, epochs, batches_seen,
                                            np.mean(losses), test_loss, lr_scheduler.get_lr()[0],
@@ -282,3 +292,13 @@ class DCRNNSupervisor:
         y_true = self.standard_scaler.inverse_transform(y_true)
         y_predicted = self.standard_scaler.inverse_transform(y_predicted)
         return masked_mae_loss(y_predicted, y_true)
+
+    def _compute_rmse_loss(self, y_true, y_predicted):
+        y_true = self.standard_scaler.inverse_transform(y_true)
+        y_predicted = self.standard_scaler.inverse_transform(y_predicted)
+        return masked_rmse_loss(y_predicted, y_true)
+    
+    def _compute_mape_loss(self, y_true, y_predicted):
+        y_true = self.standard_scaler.inverse_transform(y_true)
+        y_predicted = self.standard_scaler.inverse_transform(y_predicted)
+        return masked_mape_loss(y_true, y_predicted)

@@ -56,9 +56,6 @@ mkdir -p data/{METR-LA,PEMS-BAY}
 
 # METR-LA
 python -m scripts.generate_training_data --output_dir=data/METR-LA --traffic_df_filename=data/metr-la.h5 --config_filename=data/model/dcrnn_la.yaml
-
-# PEMS-BAY
-python -m scripts.generate_training_data --output_dir=data/PEMS-BAY --traffic_df_filename=data/pems-bay.h5
 ```
 
 ## Graph Construction
@@ -69,28 +66,23 @@ python -m scripts.gen_adj_mx  --sensor_ids_filename=data/sensor_graph/graph_sens
 ```
 Besides, the locations of sensors in Los Angeles, i.e., METR-LA, are available at [data/sensor_graph/graph_sensor_locations.csv](https://github.com/liyaguang/DCRNN/blob/master/data/sensor_graph/graph_sensor_locations.csv).
 
-## Run the Pre-trained Model on METR-LA
-
-```bash
-# METR-LA
-python run_demo_pytorch.py --config_filename=data/model/pretrained/METR-LA/config.yaml
-
-# PEMS-BAY
-python run_demo_pytorch.py --config_filename=data/model/pretrained/PEMS-BAY/config.yaml
-```
-The generated prediction of DCRNN is in `data/results/dcrnn_predictions`.
-
 
 ## Model Training
 ```bash
 # METR-LA
 python dcrnn_train_pytorch.py --config_filename=data/model/dcrnn_la.yaml
-
-# PEMS-BAY
-python dcrnn_train_pytorch.py --config_filename=data/model/dcrnn_bay.yaml
 ```
 
 There is a chance that the training loss will explode, the temporary workaround is to restart from the last saved model before the explosion, or to decrease the learning rate earlier in the learning rate schedule. 
+
+
+## Run the Pre-trained Model on METR-LA
+
+```bash
+# METR-LA
+python run_demo_pytorch.py --config_filename=data/model/dcrnn_la.yaml
+```
+The generated prediction of DCRNN is in `data/`.
 
 
 ## Eval baseline methods

@@ -16,9 +16,11 @@ def run_dcrnn(args):
         sensor_ids, sensor_id_to_ind, adj_mx = load_graph_data(graph_pkl_filename)
 
         supervisor = DCRNNSupervisor(adj_mx=adj_mx, **supervisor_config)
-        mean_score, outputs = supervisor.evaluate('test')
+        mean_score, mean_rmse, mean_mape, outputs = supervisor.evaluate('test')
         np.savez_compressed(args.output_filename, **outputs)
-        print("MAE : {}".format(mean_score))
+        print("MAE : {:.3f}".format(mean_score))
+        print("RMSE : {:.3f}".format(mean_rmse))
+        print("MAPE : {:.3f} %".format(mean_mape*100))
         print('Predictions saved as {}.'.format(args.output_filename))
 
 
