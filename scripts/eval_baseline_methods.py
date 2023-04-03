@@ -8,6 +8,12 @@ from lib import utils
 from lib.metrics import masked_rmse_np, masked_mape_np, masked_mae_np
 from lib.utils import StandardScaler
 
+import yaml
+import matplotlib.pyplot as plt
+
+from lib.utils import load_graph_data
+from model.pytorch.dcrnn_supervisor import DCRNNSupervisor
+
 
 def historical_average_predict(df, period=12 * 24 * 7, test_ratio=0.2, null_val=0.):
     """
@@ -49,7 +55,6 @@ def static_predict(df, n_forward, test_ratio=0.2):
     y_predict = df.shift(n_forward).iloc[-test_num:]
     return y_predict, y_test
 
-
 def var_predict(df, n_forwards=(1, 3), n_lags=4, test_ratio=0.2):
     """
     Multivariate time series forecasting using Vector Auto-Regressive Model.
@@ -90,6 +95,7 @@ def eval_static(traffic_reading_df):
     logger.info('Static')
     horizons = [1, 3, 6, 12]
     logger.info('\t'.join(['Model', 'Horizon', 'MAE', 'RMSE', 'MAPE']))
+
     for horizon in horizons:
         y_predict, y_test = static_predict(traffic_reading_df, n_forward=horizon, test_ratio=0.2)
         rmse = masked_rmse_np(preds=y_predict.values, labels=y_test.values, null_val=0)
@@ -109,7 +115,7 @@ def eval_historical_average(traffic_reading_df, period):
     for horizon in [1, 3, 6, 12]:
         line = 'HA\t%d\t%.2f\t%.2f\t%.2f %%' % (horizon, mae, rmse, mape * 100)
         logger.info(line)
-
+    
 
 def eval_var(traffic_reading_df, n_lags=3):
     n_forwards = [1, 3, 6, 12]
@@ -123,13 +129,41 @@ def eval_var(traffic_reading_df, n_lags=3):
         mae = masked_mae_np(preds=y_predicts[i].values, labels=y_test.values, null_val=0)
         line = 'VAR\t%d\t%.2f\t%.2f\t%.2f %%' % (horizon, mae, rmse, mape * 100)
         logger.info(line)
-
-
+    
 def main(args):
-    traffic_reading_df = pd.read_hdf(args.traffic_reading_filename)
-    eval_static(traffic_reading_df)
-    eval_historical_average(traffic_reading_df, period=7 * 24 * 12)
-    eval_var(traffic_reading_df, n_lags=3)
+    if args.plot:
+        data = pd.read_pickle("data/METR-LA/val.pkl")
+        traffic_reading_df = data
+        sensor = args.plot_sensor
+        test_ratio = 0.95
+        
+        static_prediction, static_actual = static_predict(traffic_reading_df, n_forward=1, test_ratio=1)
+        historical_predict, historical_actual = historical_average_predict(traffic_reading_df, period=7, test_ratio=0.95)
+        var_prediction, var_actual = var_predict(traffic_reading_df, n_forwards=[1], n_lags=4, test_ratio=0.95)
+        var_prediction = var_prediction[0]
+
+        plt.plot(range(len(historical_predict.iloc[:, sensor])), historical_predict.iloc[:, sensor], label="Prediction historical")
+        plt.plot(range(len(var_prediction.iloc[:, sensor])), var_prediction.iloc[:, sensor], label="Prediction var")
+        plt.plot(range(len(traffic_reading_df.iloc[:, sensor])), traffic_reading_df.iloc[:, sensor], label="Ground Truth", linewidth=3, c="black")
+        plt.plot(range(len(static_prediction.iloc[:, sensor])), static_prediction.iloc[:, sensor], label="Prediction static")
+
+        with open(args.config_filename) as f:
+            supervisor_config = yaml.load(f, Loader=yaml.CLoader)
+            graph_pkl_filename = supervisor_config['data'].get('graph_pkl_filename')
+            sensor_ids, sensor_id_to_ind, adj_mx = load_graph_data(graph_pkl_filename)
+
+            supervisor = DCRNNSupervisor(adj_mx=adj_mx, **supervisor_config)
+            supervisor.train()
+            mean_loss, mean_rmse, mean_mape, results = supervisor.evaluate()
+            prediction = results["prediction"][0][:, sensor][:traffic_reading_df.shape[0]]
+            plt.plot(range(len(prediction)), prediction, label="Prediction DCRNN")
+            plt.legend()
+            plt.savefig(f'figures/eval_sensor_{args.plot_sensor}.png')
+    else:
+        traffic_reading_df = pd.read_hdf(args.traffic_reading_filename)
+        eval_static(traffic_reading_df)
+        eval_historical_average(traffic_reading_df, period=7 * 24 * 12)
+        eval_var(traffic_reading_df, n_lags=3)    
 
 
 if __name__ == '__main__':
@@ -137,5 +171,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--traffic_reading_filename', default="data/metr-la.h5", type=str,
                         help='Path to the traffic Dataframe.')
+    
+    parser.add_argument('--plot', default=False, type=bool,
+                        help='Create evaluation plot from validation data.')
+    parser.add_argument('--plot_sensor', default=0, type=int, help="Sensor you want to plot.")
+    parser.add_argument('--config_filename', default=None, type=str,
+                        help='Configuration filename for restoring the model.')
+    
+
     args = parser.parse_args()
     main(args)

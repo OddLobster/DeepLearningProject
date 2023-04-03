@@ -92,6 +92,9 @@ def generate_train_val_test(args):
     num_train = round(num_samples * 0.7)
     num_val = num_samples - num_test - num_train
 
+    df_val = df.iloc[num_train: num_train+num_val]
+    df_val.to_pickle("data/METR-LA/val.pkl")
+
     # train
     x_train, y_train = x[:num_train], y[:num_train]
     # val
