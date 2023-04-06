@@ -3,10 +3,10 @@ base_dir: data/model
 log_level: INFO
 data:
   batch_size: 64                # Size of each batch, then the number of batches is #samples / batch_size
-  dataset_dir: data/METR-LA
+  dataset_dir: data/TOKYO
   test_batch_size: 64
   val_batch_size: 64
-  graph_pkl_filename: data/sensor_graph/adj_mx.pkl
+  graph_pkl_filename: data/sensor_graph/adj_mx_tokyo.pkl
 
 model:
   cl_decay_steps: 2000
@@ -28,7 +28,7 @@ train:
   base_lr: 0.01                   #Learning rate that the optimizer recieves (adam in this case)
   dropout: 0
   epoch: 0
-  epochs: 10                     #Number of epochs to perform
+  epochs: 10                      #Number of epochs to perform
   epsilon: 1.0e-3                 #eps: term added to the denominator to improve numerical stability
   global_step: 0
   lr_decay_ratio: 0.1             #LR of each parameter group decays by `lr_decay_ratio` once the epoch num. reaches one of the milestones (`steps`)
