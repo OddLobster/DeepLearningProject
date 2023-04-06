@@ -7,6 +7,7 @@ import yaml
 import numpy as np
 import pandas as pd
 import pickle
+import random
 
 
 def get_adjacency_matrix(distance_df, sensor_ids, normalized_k=0.1, num_sensors_used=100):
@@ -47,6 +48,25 @@ def get_adjacency_matrix(distance_df, sensor_ids, normalized_k=0.1, num_sensors_
     return sensor_ids, sensor_id_to_ind, adj_mx
 
 
+def get_adjacency_matrix_tokyo(distance_df, normalized_k=0.1, num_sensors_used=100):
+    N = len(distance_df)
+    # select random sensors
+    indices = random.sample(range(N), k=num_sensors_used)
+
+    # sample distance matrix by selected sensors
+    dist_mx = np.zeros((num_sensors_used, num_sensors_used), dtype=np.float32)
+    for r in range(num_sensors_used):
+        for c in range(num_sensors_used):
+            dist_mx[r][c] = distance_df[indices[r]][indices[c]]
+
+    # Calculates the standard deviation as theta.
+    distances = dist_mx[~np.isinf(dist_mx)].flatten()
+    std = distances.std()
+    adj_mx = np.exp(-np.square(dist_mx / std))
+    # Sets entries that lower than a threshold, i.e., k, to zero for sparsity.
+    adj_mx[adj_mx < normalized_k] = 0
+    return adj_mx
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--sensor_ids_filename', type=str, default='data/sensor_graph/graph_sensor_ids.txt',
@@ -61,18 +81,34 @@ if __name__ == '__main__':
     parser.add_argument('--config_filename', default=None, type=str,
                         help='Configuration filename for restoring the model.')
     
+    # tokyo flag argument
+    parser.add_argument('--tokyo', default=False, type=bool,
+                        help='True if using TOKYO dataset')
+    
     args = parser.parse_args()
 
     with open(args.sensor_ids_filename) as f:
         sensor_ids = f.read().strip().split(',')
-    distance_df = pd.read_csv(args.distances_filename, dtype={'from': 'str', 'to': 'str'})
+    if args.tokyo:
+        #../tokyo/expy-tky_adjdis.npy
+        distance_df = np.load(args.distances_filename)
+    else:
+        distance_df = pd.read_csv(args.distances_filename, dtype={'from': 'str', 'to': 'str'})
 
 
     f = open(args.config_filename)
     supervisor_config = yaml.load(f, Loader=yaml.CLoader)
     num_sensors_used = supervisor_config['model'].get('num_nodes')
 
-    _, sensor_id_to_ind, adj_mx = get_adjacency_matrix(distance_df, sensor_ids, num_sensors_used=num_sensors_used)
+    # check if tokyo
+    if args.tokyo:
+        sensor_ids = []
+        sensor_id_to_ind = []
+        adj_mx = get_adjacency_matrix_tokyo(distance_df, num_sensors_used=num_sensors_used)
+    else:
+        _, sensor_id_to_ind, adj_mx = get_adjacency_matrix(distance_df, sensor_ids, num_sensors_used=num_sensors_used)
+
+
     # Save to pickle file.
     with open(args.output_pkl_filename, 'wb') as f:
         pickle.dump([sensor_ids, sensor_id_to_ind, adj_mx], f, protocol=2)
