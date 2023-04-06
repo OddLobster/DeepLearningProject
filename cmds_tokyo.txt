@@ -8,7 +8,7 @@ https://drive.google.com/file/d/1wL12eHQvmYtAHw5EM3OYO4EtoPRvEW2K/view?usp=shari
 python -m scripts.generate_training_data --output_dir=data/TOKYO --traffic_df_filename=data/metr_tokyo.h5 --config_filename=data/model/dcrnn_tokyo.yaml
 
 # make tokyo pickle file
-python -m scripts.gen_adj_mx  --normalized_k=0.1 --distances_filename=tokyo/expy-tky_adjdis.npy --output_pkl_filename=data/sensor_graph/adj_mx_tokyo.pkl --config_filename=data/model/dcrnn_tokyo.yaml --tokyo=True
+python -m scripts.gen_adj_mx  --normalized_k=0.1 --distances_filename=data/sensor_graph/tokyo_adj.npy --output_pkl_filename=data/sensor_graph/adj_mx_tokyo.pkl --config_filename=data/model/dcrnn_tokyo.yaml --tokyo=True
 
 # train tokyo
 python dcrnn_train_pytorch.py --config_filename=data/model/dcrnn_tokyo.yaml
